@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "outDir": "./out",
+    "allowJs": true,
+    "module": "commonjs",
+    "lib": [
+      "dom",
+      "es2015",
+      "es5",
+      "es6"
+    ]
+  }
+}
