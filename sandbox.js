@@ -12,16 +12,14 @@ function getChar(e) {
   return null;
 }
 
-document.getElementById('controls').addEventListener('keydown', e => {
+document.body.addEventListener('keydown', e => {
   let key = getChar(e);
   if (key) keysDown[key] = true;
-  console.log(keysDown);
 });
 
-document.getElementById('controls').addEventListener('keyup', e => {
+document.body.addEventListener('keyup', e => {
   let key = getChar(e);
   if (key) keysDown[key] = false;
-  console.log(keysDown);
 });
 
 var canvasOffset = {
@@ -51,8 +49,6 @@ function addGround() {
   groundBody.CreateFixture(groundShape, 0.0);
 }
 
-addGround();
-
 function addRectangle() {
   const x = 100;
   const y = 100;
@@ -81,7 +77,38 @@ function addRectangle() {
   return body;
 }
 
-var rect = addRectangle();
+function addPlayer() {
+  const x = 400
+  const y = 100
+  const rotation = 0;
+  const width = 60;
+  const height = 60;
+
+  let vertices = [];
+  vertices.push( new Box2D.b2Vec2(0, 0) );
+  vertices.push( new Box2D.b2Vec2(0, height));
+  vertices.push( new Box2D.b2Vec2(width, height));
+  vertices.push( new Box2D.b2Vec2(width, 0));
+  const shape = createPolygonShape(vertices);
+
+  let bodyDef = new Box2D.b2BodyDef();
+  bodyDef.set_type(Box2D.b2_dynamicBody);
+  bodyDef.set_position(new Box2D.b2Vec2(0,0));
+
+  let body = world.CreateBody(bodyDef);
+  body.CreateFixture(shape, 1.0);
+
+  body.SetTransform(new Box2D.b2Vec2(x,y), rotation);
+  body.SetAwake(1);
+  body.SetActive(1);
+  body.SetFixedRotation(true);
+
+  return {
+    body: body,
+    width: width,
+    height: height,
+  };
+}
 
 function draw() {
   context.fillStyle = 'rgb(200,200,200)';
@@ -99,18 +126,89 @@ function draw() {
   context.restore();
 }
 
+addRectangle();
+addGround();
+var player = addPlayer();
+
+const PLAYER_CONTROLS =
+  {
+    up: 'w',
+    down: 's',
+    left: 'a',
+    right: 'd'
+  }
+
+
+const play = (function () {
+  var hitBodies = [];
+  var callback = new Box2D.JSQueryCallback();
+  callback.m_fixture = null;
+  callback.ReportFixture = function(fixturePtr) {
+    var fixture = Box2D.wrapPointer(fixturePtr, Box2D.b2Fixture);
+    hitBodies.push(fixture.GetBody());
+    return true;
+  };
+
+  return function () {
+    const body = player.body;
+    const width = player.width;
+    const height = player.height;
+    const controlMap = PLAYER_CONTROLS
+
+    const x = body.GetPosition().get_x();
+    const y = body.GetPosition().get_y();
+    let vx = body.GetLinearVelocity().get_x();
+    let vy = body.GetLinearVelocity().get_y();
+
+    var aabb = new Box2D.b2AABB();
+    aabb.set_lowerBound(new Box2D.b2Vec2(x + 10, y + height + 2));
+    aabb.set_upperBound(new Box2D.b2Vec2(x + width - 10, y + height + 6));
+
+    console.log(x + 10, y + height + 2);
+    console.log(x + width - 10, y + height + 6);
+
+    let canJump = false;
+    hitBodies = [];
+    world.QueryAABB(callback, aabb);
+    if (hitBodies.length >= 1) {
+      console.log(hitBodies);
+      canJump = true;
+    }
+
+    console.log(canJump);
+
+    const acceleration = canJump ? 12 : 6;
+
+    if (keysDown[controlMap.left] && !keysDown[controlMap.right]) {
+      vx -= acceleration;
+    } else if (!keysDown[controlMap.left] && keysDown[controlMap.right]) {
+      vx += acceleration;
+    } else {
+      vx -= Math.min(acceleration, Math.abs(vx)) * vx / Math.abs(vx);
+    }
+
+    if (keysDown[controlMap.up] && canJump) {
+      vy = -1000;
+    }
+
+    body.SetLinearVelocity(new Box2D.b2Vec2(vx, vy));
+  }
+})();
+
 function step() {
   world.Step(1/60, 3, 2);
   draw();
-  // console.log(rect.GetPosition().get_x(), rect.GetPosition().get_y());
 }
 
-var frames = 0;
+var frames = 0;s
 
 function animate() {
   frames += 1;
-  if (frames < 1000)
+  if (frames < 100) {
     window.requestAnimationFrame(animate);
+  }
+
+  play();
   step();
 }
 

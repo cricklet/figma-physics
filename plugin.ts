@@ -3,7 +3,22 @@ import { copyVec2, scaleVec2, scaledVec2, createPolygonShape } from './box2d-hel
 
 figma.showUI(__html__);
 
-let keysDown: { [key: string]: boolean }
+let keysDown: { [key: string]: boolean } = {};
+
+const PLAYER_CONTROLS = [
+  {
+    up: 'w',
+    down: 's',
+    left: 'a',
+    right: 'd'
+  }
+]
+
+interface Player {
+  width: number,
+  height: number,
+  body: any
+}
 
 function createGroundBox(parent: FrameNode, world: any) {
   const width = parent.width;
@@ -51,7 +66,7 @@ function createRectangle(child: RectangleNode | FrameNode, world: any) {
   return body;
 }
 
-function createPlayer(child: InstanceNode, world: any) {
+function createPlayer(child: InstanceNode, world: any): Player {
   const x = child.relativeTransform[0][2];
   const y = child.relativeTransform[1][2];
   const rotation = Math.atan2(child.relativeTransform[1][0], child.relativeTransform[1][1])
@@ -77,7 +92,9 @@ function createPlayer(child: InstanceNode, world: any) {
   body.SetActive(1);
   body.SetFixedRotation(true);
 
-  return body;
+  return {
+    width, height, body
+  }
 }
 
 function createVector(child: VectorNode, world: any) {
@@ -116,16 +133,19 @@ function createVector(child: VectorNode, world: any) {
 interface Physics {
   stepPhysics: () => void,
   updateLayers: () => void,
+  movePlayers: () => void,
 }
 
 function setupPhysicsOnFrame(parent: FrameNode) {
-  let world = new Box2D.b2World(new Box2D.b2Vec2(0.0, 100.0));
+  let world = new Box2D.b2World(new Box2D.b2Vec2(0.0, 1000.0));
   createGroundBox(parent, world);
 
   let physicsObjects: Array<{
     node: RectangleNode | FrameNode | InstanceNode | VectorNode,
     body: any
   }> = [];
+
+  let players: Player[] = [];
 
   for (const child of parent.children) {
     if (child.type === 'RECTANGLE' || child.type === 'FRAME') {
@@ -137,9 +157,11 @@ function setupPhysicsOnFrame(parent: FrameNode) {
         node: child, body: createVector(child, world)
       });
     } else if (child.type === 'INSTANCE') {
+      const player = createPlayer(child, world);
       physicsObjects.push({
-        node: child, body: createPlayer(child, world)
+        node: child, body: player.body
       });
+      players.push(player);
     }
   }
 
@@ -147,6 +169,53 @@ function setupPhysicsOnFrame(parent: FrameNode) {
     world.Step(1/60, 3, 2);
   }
 
+  const play = (function () {
+    var hitBodies = [];
+    var callback = new Box2D.JSQueryCallback();
+    callback.m_fixture = null;
+    callback.ReportFixture = function(fixturePtr) {
+      var fixture = Box2D.wrapPointer(fixturePtr, Box2D.b2Fixture);
+      hitBodies.push(fixture.GetBody());
+      return true;
+    };
+  
+    return function () {
+      for (let i = 0; i < players.length; i ++) {
+        const player = players[i];
+        const body = player.body;
+        const width = player.width;
+        const height = player.height;
+        const controlMap = PLAYER_CONTROLS[i]
+    
+        const x = body.GetPosition().get_x();
+        const y = body.GetPosition().get_y();
+        const vx = body.GetLinearVelocity().get_x();
+        const vy = body.GetLinearVelocity().get_y();
+    
+        var aabb = new Box2D.b2AABB();
+        aabb.set_lowerBound(new Box2D.b2Vec2(x + 10, y + height + 2));
+        aabb.set_upperBound(new Box2D.b2Vec2(x + width - 10, y + height + 6));
+    
+        let canJump = false;
+        hitBodies = [];
+        world.QueryAABB(callback, aabb);
+        if (hitBodies.length >= 1) {
+          canJump = true;
+        }
+    
+        const acceleration = canJump ? 12 : 6;
+    
+        if (keysDown[controlMap.up] && canJump) {
+          body.SetLinearVelocity(new Box2D.b2Vec2(vx, -1000));
+        } else if (keysDown[controlMap.left] && !keysDown[controlMap.right]) {
+          body.SetLinearVelocity(new Box2D.b2Vec2(vx - acceleration, vy));
+        } else if (!keysDown[controlMap.left] && keysDown[controlMap.right]) {
+          body.SetLinearVelocity(new Box2D.b2Vec2(vx + acceleration, vy));
+        }
+      }
+    }
+  })();
+  
   function update() {
     for (const physicsObject of physicsObjects) {
       const child: BaseNode = physicsObject.node;
@@ -165,7 +234,7 @@ function setupPhysicsOnFrame(parent: FrameNode) {
   }
 
   return {
-    stepPhysics: step, updateLayers: update
+    stepPhysics: step, updateLayers: update, movePlayers: play
   }
 }
 
@@ -201,6 +270,7 @@ figma.ui.onmessage = msg => {
   }
   if (msg.type === 'step') {
     if (currentPhysics) {
+      currentPhysics.movePlayers();
       currentPhysics.stepPhysics();
       currentPhysics.updateLayers();
     }

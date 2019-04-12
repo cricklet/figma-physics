@@ -2,7 +2,6 @@
     <div><button id="enable-box2d">Enable</button></div>
     <div><button id="start-simulating">Start</button></div>
     <div><button id="stop-simulating">Stop</button></div>
-    <div><input id="controls"></input></div>
 </body>
 
 <script>
@@ -19,13 +18,13 @@
     return null;
   }
 
-  document.getElementById('controls').addEventListener('keydown', e => {
+  document.body.addEventListener('keydown', e => {
     let key = getChar(e);
     if (key) keysDown[key] = true;
     parent.postMessage({ pluginMessage: { type: 'controls', keysDown } }, '*');
   });
 
-  document.getElementById('controls').addEventListener('keyup', e => {
+  document.body.addEventListener('keyup', e => {
     let key = getChar(e);
     if (key) keysDown[key] = false;
     parent.postMessage({ pluginMessage: { type: 'controls', keysDown } }, '*');
@@ -41,7 +40,6 @@
 
   let nextAnimationFrame;
   function runLoop() {
-    document.getElementById('controls').value = '';
     nextAnimationFrame = requestAnimationFrame(runLoop);
     parent.postMessage({ pluginMessage: { type: 'step' } }, '*')
   }
