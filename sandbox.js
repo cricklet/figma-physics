@@ -142,7 +142,6 @@ const PLAYER_CONTROLS =
 const play = (function () {
   var hitBodies = [];
   var callback = new Box2D.JSQueryCallback();
-  callback.m_fixture = null;
   callback.ReportFixture = function(fixturePtr) {
     var fixture = Box2D.wrapPointer(fixturePtr, Box2D.b2Fixture);
     hitBodies.push(fixture.GetBody());
@@ -161,16 +160,18 @@ const play = (function () {
     let vy = body.GetLinearVelocity().get_y();
 
     var aabb = new Box2D.b2AABB();
-    aabb.set_lowerBound(new Box2D.b2Vec2(x + 10, y + height + 2));
+    aabb.set_lowerBound(new Box2D.b2Vec2(x + 10, y + height - 6));
     aabb.set_upperBound(new Box2D.b2Vec2(x + width - 10, y + height + 6));
 
-    console.log(x + 10, y + height + 2);
+    console.log(x + 10, y + height - 6);
     console.log(x + width - 10, y + height + 6);
 
     let canJump = false;
     hitBodies = [];
+
+    callback.m_fixture = null;
     world.QueryAABB(callback, aabb);
-    if (hitBodies.length >= 1) {
+    if (hitBodies.length >= 2) {
       console.log(hitBodies);
       canJump = true;
     }
@@ -184,7 +185,9 @@ const play = (function () {
     } else if (!keysDown[controlMap.left] && keysDown[controlMap.right]) {
       vx += acceleration;
     } else {
-      vx -= Math.min(acceleration, Math.abs(vx)) * vx / Math.abs(vx);
+      if (Math.abs(vx) > 1) {
+        vx -= Math.min(acceleration, Math.abs(vx)) * vx / Math.abs(vx);
+      }
     }
 
     if (keysDown[controlMap.up] && canJump) {
@@ -200,11 +203,11 @@ function step() {
   draw();
 }
 
-var frames = 0;s
+var frames = 0;
 
 function animate() {
   frames += 1;
-  if (frames < 100) {
+  if (frames < 1000) {
     window.requestAnimationFrame(animate);
   }
 
