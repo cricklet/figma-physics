@@ -24,5 +24,5 @@ module.exports = {
   node: {
     fs: 'empty'
   },
-  devtool: 'source-map',
+  devtool: 'inline-source-map',
 };

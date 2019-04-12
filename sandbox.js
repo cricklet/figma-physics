@@ -50,7 +50,6 @@ function addRectangle() {
   bodyDef.set_position(new Box2D.b2Vec2(0,0));
 
   var body = world.CreateBody(bodyDef);
-  window.body = body;
   body.CreateFixture(shape, 1.0);
 
   body.SetTransform(new Box2D.b2Vec2(x,y), rotation);
@@ -81,7 +80,7 @@ function draw() {
 function step() {
   world.Step(1/60, 3, 2);
   draw();
-  console.log(rect.GetWorldPoint().get_x(), rect.GetWorldPoint().get_y());
+  console.log(rect.GetPosition().get_x(), rect.GetPosition().get_y());
 }
 
 var frames = 0;

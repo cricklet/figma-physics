@@ -1,9 +1,27 @@
 
 <h2>Box2D</h2>
-<button id="start-box2d">Enable Box2D on frame</button>
-<button id="stop">Stop threads</button>
+<button id="enable-box2d">Enable Box2D on selection</button>
+<button id="start-simulating">Start Box2D simulation</button>
+<button id="stop-simulating">Stop Box2D simluation</button>
 
 <script>
   console.log('Starting up the UI!');
   parent.postMessage({ pluginMessage: { type: 'start-box2d' } }, '*');
+
+  document.getElementById('enable-box2d').onclick = () => {
+    parent.postMessage({ pluginMessage: { type: 'enable-box2d' } }, '*')
+  }
+
+  let nextAnimationFrame;
+  function runLoop() {
+    nextAnimationFrame = requestAnimationFrame(runLoop);
+    parent.postMessage({ pluginMessage: { type: 'step' } }, '*')
+  }
+
+  document.getElementById('start-simulating').onclick = () => {
+    runLoop();
+  }
+  document.getElementById('stop-simulating').onclick = () => {
+    cancelAnimationFrame(nextAnimationFrame)
+  }
 </script>

@@ -1,5 +1,5 @@
 {
-  "name": "Game",
+  "name": "Figma Physics",
   "version": "0.4.0",
   "html": "ui.html",
   "script": "out/plugin.js"
