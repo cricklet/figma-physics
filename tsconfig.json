@@ -4,10 +4,6 @@
     "allowJs": true,
     "module": "es6",
     "target": "es5",
-  },
-  "include": [
-    "index.d.ts",
-    "box2d.js",
-    "code.ts",
-  ],
+    "sourceMap": true,
+  }
 }
