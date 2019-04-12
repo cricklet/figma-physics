@@ -163,20 +163,14 @@ const play = (function () {
     aabb.set_lowerBound(new Box2D.b2Vec2(x + 10, y + height - 6));
     aabb.set_upperBound(new Box2D.b2Vec2(x + width - 10, y + height + 6));
 
-    console.log(x + 10, y + height - 6);
-    console.log(x + width - 10, y + height + 6);
-
     let canJump = false;
     hitBodies = [];
 
     callback.m_fixture = null;
     world.QueryAABB(callback, aabb);
     if (hitBodies.length >= 2) {
-      console.log(hitBodies);
       canJump = true;
     }
-
-    console.log(canJump);
 
     const acceleration = canJump ? 12 : 6;
 

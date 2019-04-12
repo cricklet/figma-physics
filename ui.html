@@ -1,7 +1,12 @@
 <body>
-    <div><button id="enable-box2d">Enable</button></div>
+    <div><button id="enable-box2d">Reset</button></div>
+    <div><button id="randomize-box2d">Randomize</button></div>
     <div><button id="start-simulating">Start</button></div>
     <div><button id="stop-simulating">Stop</button></div>
+    <div>Gravity:<input id="gravity" type="range" min="1" max="100" value="10"></input></div>
+    <div>Jump:<input id="jump" type="range" min="1" max="100" value="10"></input></div>
+    <div>Acceleration:<input id="acceleration" type="range" min="1" max="12" value="2"></input></div>
+    <div>Random:<input id="random" type="range" min="1" max="1000" value="100"></input></div>
 </body>
 
 <script>
@@ -12,9 +17,9 @@
   const keysDown = {};
 
   function getChar(e) {
-    if (e.keyCode >= 48 && e.keyCode <= 90)
+    if (e.keyCode >= 48 && e.keyCode <= 90) {
       return String.fromCharCode(e.keyCode).toLowerCase();
-
+    }
     return null;
   }
 
@@ -30,12 +35,45 @@
     parent.postMessage({ pluginMessage: { type: 'controls', keysDown } }, '*');
   });
 
+  const accelerationEl = document.getElementById('acceleration');
+  parent.postMessage({ pluginMessage: { type: 'set-acceleration', value: Number(accelerationEl.value) } }, '*')
+  accelerationEl.oninput = function() {
+    console.log('acceleration change')
+    parent.postMessage({ pluginMessage: { type: 'set-acceleration', value: Number(accelerationEl.value) } }, '*')
+  };
+
+  const randomEl = document.getElementById('random');
+  parent.postMessage({ pluginMessage: { type: 'set-random', value: Number(randomEl.value) } }, '*')
+  randomEl.oninput = function() {
+    console.log('random change')
+    parent.postMessage({ pluginMessage: { type: 'set-random', value: Number(randomEl.value) } }, '*')
+  };
+
+  const gravityEl = document.getElementById('gravity');
+  parent.postMessage({ pluginMessage: { type: 'set-gravity', value: Number(gravityEl.value) } }, '*')
+  gravityEl.oninput = function() {
+    console.log('gravity change')
+    parent.postMessage({ pluginMessage: { type: 'set-gravity', value: Number(gravityEl.value) } }, '*')
+  };
+
+  const jumpEl = document.getElementById('jump');
+  parent.postMessage({ pluginMessage: { type: 'set-jump', value: Number(jumpEl.value) } }, '*')
+  jumpEl.oninput = function() {
+    console.log('jump change')
+    parent.postMessage({ pluginMessage: { type: 'set-jump', value: Number(jumpEl.value) } }, '*')
+  };
+
   ////////////////////////////////////////////////////
   // PHYSICS
   ////////////////////////////////////////////////////
 
+  parent.postMessage({ pluginMessage: { type: 'enable-box2d' } }, '*')
   document.getElementById('enable-box2d').onclick = () => {
     parent.postMessage({ pluginMessage: { type: 'enable-box2d' } }, '*')
+  }
+
+  document.getElementById('randomize-box2d').onclick = () => {
+    parent.postMessage({ pluginMessage: { type: 'randomize-box2d' } }, '*')
   }
 
   let nextAnimationFrame;

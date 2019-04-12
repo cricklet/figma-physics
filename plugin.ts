@@ -3,6 +3,11 @@ import { copyVec2, scaleVec2, scaledVec2, createPolygonShape } from './box2d-hel
 
 figma.showUI(__html__);
 
+let GRAVITY;
+let JUMP;
+let ACCELERATION;
+let RANDOM_POWER;
+
 let keysDown: { [key: string]: boolean } = {};
 
 const PLAYER_CONTROLS = [
@@ -11,8 +16,16 @@ const PLAYER_CONTROLS = [
     down: 's',
     left: 'a',
     right: 'd'
+  },
+  {
+    up: 'i',
+    down: 'k',
+    left: 'j',
+    right: 'l'
   }
 ]
+
+const PHYSICS_SCALE = 1 / 10.0;
 
 interface Player {
   width: number,
@@ -21,8 +34,8 @@ interface Player {
 }
 
 function createGroundBox(parent: FrameNode, world: any) {
-  const width = parent.width;
-  const height = parent.height;
+  const width = parent.width * PHYSICS_SCALE;
+  const height = parent.height * PHYSICS_SCALE;
 
   let groundBody = world.CreateBody(new Box2D.b2BodyDef());
   let groundShape = new Box2D.b2EdgeShape();
@@ -39,11 +52,11 @@ function createGroundBox(parent: FrameNode, world: any) {
 }
 
 function createRectangle(child: RectangleNode | FrameNode, world: any) {
-  const x = child.relativeTransform[0][2];
-  const y = child.relativeTransform[1][2];
+  const x = child.relativeTransform[0][2] * PHYSICS_SCALE;
+  const y = child.relativeTransform[1][2] * PHYSICS_SCALE;
   const rotation = Math.atan2(child.relativeTransform[1][0], child.relativeTransform[1][1])
-  const width = child.width;
-  const height = child.height;
+  const width = child.width * PHYSICS_SCALE;
+  const height = child.height * PHYSICS_SCALE;
 
   let vertices = [];
   vertices.push( new Box2D.b2Vec2(0, 0) );
@@ -67,11 +80,11 @@ function createRectangle(child: RectangleNode | FrameNode, world: any) {
 }
 
 function createPlayer(child: InstanceNode, world: any): Player {
-  const x = child.relativeTransform[0][2];
-  const y = child.relativeTransform[1][2];
+  const x = child.relativeTransform[0][2] * PHYSICS_SCALE;
+  const y = child.relativeTransform[1][2] * PHYSICS_SCALE;
   const rotation = Math.atan2(child.relativeTransform[1][0], child.relativeTransform[1][1])
-  const width = child.width;
-  const height = child.height;
+  const width = child.width * PHYSICS_SCALE;
+  const height = child.height * PHYSICS_SCALE;
 
   let vertices = [];
   vertices.push( new Box2D.b2Vec2(0, 0) );
@@ -98,8 +111,8 @@ function createPlayer(child: InstanceNode, world: any): Player {
 }
 
 function createVector(child: VectorNode, world: any) {
-  const x = child.relativeTransform[0][2];
-  const y = child.relativeTransform[1][2];
+  const x = child.relativeTransform[0][2] * PHYSICS_SCALE;
+  const y = child.relativeTransform[1][2] * PHYSICS_SCALE;
   const rotation = Math.atan2(child.relativeTransform[1][0], child.relativeTransform[1][1])
 
   let bodyDef = new Box2D.b2BodyDef();
@@ -116,7 +129,8 @@ function createVector(child: VectorNode, world: any) {
       let vertices = [];    
       for (const index of loop) {
         const vertex: VectorVertex = vectorVertices[index];
-        vertices.push(new Box2D.b2Vec2(vertex.position.x, vertex.position.y));
+        vertices.push(new Box2D.b2Vec2(
+          vertex.position.x * PHYSICS_SCALE, vertex.position.y * PHYSICS_SCALE));
       }
       const shape = createPolygonShape(vertices);
       body.CreateFixture(shape, 1.0);
@@ -134,10 +148,12 @@ interface Physics {
   stepPhysics: () => void,
   updateLayers: () => void,
   movePlayers: () => void,
+  randomize: () => void,
+  resetConstants: () => void,
 }
 
 function setupPhysicsOnFrame(parent: FrameNode) {
-  let world = new Box2D.b2World(new Box2D.b2Vec2(0.0, 1000.0));
+  let world = new Box2D.b2World(new Box2D.b2Vec2(0.0, GRAVITY));
   createGroundBox(parent, world);
 
   let physicsObjects: Array<{
@@ -172,7 +188,6 @@ function setupPhysicsOnFrame(parent: FrameNode) {
   const play = (function () {
     var hitBodies = [];
     var callback = new Box2D.JSQueryCallback();
-    callback.m_fixture = null;
     callback.ReportFixture = function(fixturePtr) {
       var fixture = Box2D.wrapPointer(fixturePtr, Box2D.b2Fixture);
       hitBodies.push(fixture.GetBody());
@@ -189,29 +204,40 @@ function setupPhysicsOnFrame(parent: FrameNode) {
     
         const x = body.GetPosition().get_x();
         const y = body.GetPosition().get_y();
-        const vx = body.GetLinearVelocity().get_x();
-        const vy = body.GetLinearVelocity().get_y();
+        let vx = body.GetLinearVelocity().get_x();
+        let vy = body.GetLinearVelocity().get_y();
     
         var aabb = new Box2D.b2AABB();
-        aabb.set_lowerBound(new Box2D.b2Vec2(x + 10, y + height + 2));
-        aabb.set_upperBound(new Box2D.b2Vec2(x + width - 10, y + height + 6));
-    
+        aabb.set_lowerBound(new Box2D.b2Vec2(x + 1.0, y + height - 0.2));
+        aabb.set_upperBound(new Box2D.b2Vec2(x + width - 1.0, y + height + 0.2));
+
         let canJump = false;
         hitBodies = [];
+
+        callback.m_fixture = null;
         world.QueryAABB(callback, aabb);
-        if (hitBodies.length >= 1) {
+        if (hitBodies.length >= 2) {
           canJump = true;
         }
+        
+        const acceleration = canJump ? ACCELERATION : ACCELERATION * 0.5;
     
-        const acceleration = canJump ? 12 : 6;
+        if (keysDown[controlMap.left] && !keysDown[controlMap.right]) {
+          vx -= acceleration;
+        } else if (!keysDown[controlMap.left] && keysDown[controlMap.right]) {
+          vx += acceleration;
+        } else {
+          if (Math.abs(vx) > 1) {
+            vx -= Math.min(acceleration, Math.abs(vx)) * vx / Math.abs(vx);
+          }
+        }
     
         if (keysDown[controlMap.up] && canJump) {
-          body.SetLinearVelocity(new Box2D.b2Vec2(vx, -1000));
-        } else if (keysDown[controlMap.left] && !keysDown[controlMap.right]) {
-          body.SetLinearVelocity(new Box2D.b2Vec2(vx - acceleration, vy));
-        } else if (!keysDown[controlMap.left] && keysDown[controlMap.right]) {
-          body.SetLinearVelocity(new Box2D.b2Vec2(vx + acceleration, vy));
+          console.log('jumping')
+          vy = -JUMP;
         }
+    
+        body.SetLinearVelocity(new Box2D.b2Vec2(vx, vy));
       }
     }
   })();
@@ -222,8 +248,8 @@ function setupPhysicsOnFrame(parent: FrameNode) {
       const body = physicsObject.body
 
       const rotation = body.GetAngle();
-      const x = body.GetPosition().get_x();
-      const y = body.GetPosition().get_y();
+      const x = body.GetPosition().get_x() / PHYSICS_SCALE;
+      const y = body.GetPosition().get_y() / PHYSICS_SCALE;
 
       const newTransform: Transform = [
         [Math.cos(rotation), -Math.sin(rotation), x],
@@ -233,8 +259,23 @@ function setupPhysicsOnFrame(parent: FrameNode) {
     }
   }
 
+  function randomize() {
+    for (const physicsObject of physicsObjects) {
+      const body = physicsObject.body;
+
+      const vx = RANDOM_POWER * Math.random() - RANDOM_POWER * 0.5;
+      const vy = RANDOM_POWER * Math.random() - RANDOM_POWER * 0.5;
+      body.SetLinearVelocity(new Box2D.b2Vec2(vx, vy));
+    }
+  }
+
+  function resetConstants() {
+    world.SetGravity(new Box2D.b2Vec2(0.0, GRAVITY));
+  }
+
   return {
-    stepPhysics: step, updateLayers: update, movePlayers: play
+    stepPhysics: step, updateLayers: update, movePlayers: play, randomize: randomize,
+    resetConstants: resetConstants
   }
 }
 
@@ -256,13 +297,19 @@ function getTopMostFrame(node: BaseNode): FrameNode {
 let currentPhysics: Physics;
 
 figma.ui.onmessage = msg => {
-  if (msg.type === 'start-box2d') {
+  if (msg.type === 'enable-box2d') {
+    currentPhysics = null
     const selection: ReadonlyArray<BaseNode> = figma.currentPage.selection
     if (selection.length >= 1) {
       const frame = getTopMostFrame(selection[0])
       if (frame) {
         currentPhysics = setupPhysicsOnFrame(frame)
       }
+    }
+  }
+  if (msg.type === 'randomize-box2d') {
+    if (currentPhysics) {
+      currentPhysics.randomize();
     }
   }
   if (msg.type === 'controls') {
@@ -273,6 +320,29 @@ figma.ui.onmessage = msg => {
       currentPhysics.movePlayers();
       currentPhysics.stepPhysics();
       currentPhysics.updateLayers();
+    }
+  }
+  if (msg.type === 'set-random') {
+    if (msg.value !== NaN) {
+      RANDOM_POWER = msg.value;
+    }
+  }
+  if (msg.type === 'set-gravity') {
+    if (msg.value !== NaN) {
+      GRAVITY = msg.value;
+      if (currentPhysics) {
+        currentPhysics.resetConstants()
+      }
+    }
+  }
+  if (msg.type === 'set-acceleration') {
+    if (msg.value !== NaN) {
+      ACCELERATION = msg.value;
+    }
+  }
+  if (msg.type === 'set-jump-scale') {
+    if (msg.value !== NaN) {
+      JUMP = msg.value;
     }
   }
 };
