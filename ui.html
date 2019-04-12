@@ -1,12 +1,39 @@
-
-<h2>Box2D</h2>
-<button id="enable-box2d">Enable Box2D on selection</button>
-<button id="start-simulating">Start Box2D simulation</button>
-<button id="stop-simulating">Stop Box2D simluation</button>
+<body>
+    <div><button id="enable-box2d">Enable</button></div>
+    <div><button id="start-simulating">Start</button></div>
+    <div><button id="stop-simulating">Stop</button></div>
+    <div><input id="controls"></input></div>
+</body>
 
 <script>
-  console.log('Starting up the UI!');
-  parent.postMessage({ pluginMessage: { type: 'start-box2d' } }, '*');
+  ////////////////////////////////////////////////////
+  // INPUTS
+  ////////////////////////////////////////////////////
+
+  const keysDown = {};
+
+  function getChar(e) {
+    if (e.keyCode >= 48 && e.keyCode <= 90)
+      return String.fromCharCode(e.keyCode).toLowerCase();
+
+    return null;
+  }
+
+  document.getElementById('controls').addEventListener('keydown', e => {
+    let key = getChar(e);
+    if (key) keysDown[key] = true;
+    parent.postMessage({ pluginMessage: { type: 'controls', keysDown } }, '*');
+  });
+
+  document.getElementById('controls').addEventListener('keyup', e => {
+    let key = getChar(e);
+    if (key) keysDown[key] = false;
+    parent.postMessage({ pluginMessage: { type: 'controls', keysDown } }, '*');
+  });
+
+  ////////////////////////////////////////////////////
+  // PHYSICS
+  ////////////////////////////////////////////////////
 
   document.getElementById('enable-box2d').onclick = () => {
     parent.postMessage({ pluginMessage: { type: 'enable-box2d' } }, '*')
@@ -14,6 +41,7 @@
 
   let nextAnimationFrame;
   function runLoop() {
+    document.getElementById('controls').value = '';
     nextAnimationFrame = requestAnimationFrame(runLoop);
     parent.postMessage({ pluginMessage: { type: 'step' } }, '*')
   }
@@ -24,4 +52,8 @@
   document.getElementById('stop-simulating').onclick = () => {
     cancelAnimationFrame(nextAnimationFrame)
   }
+
+  parent.postMessage({ pluginMessage: { type: 'start-box2d' } }, '*');
+  runLoop();
+
 </script>

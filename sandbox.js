@@ -2,6 +2,28 @@ import { Box2D } from './box2d.js'
 import { getCanvasDebugDraw, drawAxes } from './box2d-canvas.js'
 import { copyVec2, scaleVec2, scaledVec2, createPolygonShape } from './box2d-helpers.js'
 
+
+const keysDown = {};
+
+function getChar(e) {
+  if (e.keyCode >= 48 && e.keyCode <= 90)
+    return String.fromCharCode(e.keyCode).toLowerCase();
+
+  return null;
+}
+
+document.getElementById('controls').addEventListener('keydown', e => {
+  let key = getChar(e);
+  if (key) keysDown[key] = true;
+  console.log(keysDown);
+});
+
+document.getElementById('controls').addEventListener('keyup', e => {
+  let key = getChar(e);
+  if (key) keysDown[key] = false;
+  console.log(keysDown);
+});
+
 var canvasOffset = {
     x: 0,
     y: 0
@@ -80,7 +102,7 @@ function draw() {
 function step() {
   world.Step(1/60, 3, 2);
   draw();
-  console.log(rect.GetPosition().get_x(), rect.GetPosition().get_y());
+  // console.log(rect.GetPosition().get_x(), rect.GetPosition().get_y());
 }
 
 var frames = 0;
