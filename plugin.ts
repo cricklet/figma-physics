@@ -340,7 +340,7 @@ figma.ui.onmessage = msg => {
       ACCELERATION = msg.value;
     }
   }
-  if (msg.type === 'set-jump-scale') {
+  if (msg.type === 'set-jump') {
     if (msg.value !== NaN) {
       JUMP = msg.value;
     }
